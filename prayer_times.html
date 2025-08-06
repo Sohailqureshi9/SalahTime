@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prayer Time Settings</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .prayer-time-input {
+            margin: 10px 0;
+        }
+
+        .prayer-time-input input {
+            padding: 5px;
+        }
+
+        .button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            margin-bottom: 20px;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .highlight {
+            background-color: #ffeeba;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Prayer Time Settings</h1>
+        <form id="prayerTimeForm">
+            <div class="prayer-time-input">
+                <label for="fajr_start">Fajr Start Time:</label>
+                <input type="time" id="fajr_start" name="fajr_start">
+            </div>
+            <div class="prayer-time-input">
+                <label for="fajr_end">Fajr End Time:</label>
+                <input type="time" id="fajr_end" name="fajr_end">
+            </div>
+            <div class="prayer-time-input">
+                <label for="zohar_start">Zohar Start Time:</label>
+                <input type="time" id="zohar_start" name="zohar_start">
+            </div>
+            <div class="prayer-time-input">
+                <label for="zohar_end">Zohar End Time:</label>
+                <input type="time" id="zohar_end" name="zohar_end">
+            </div>
+            <div class="prayer-time-input">
+                <label for="asar_start">Asar Start Time:</label>
+                <input type="time" id="asar_start" name="asar_start">
+            </div>
+            <div class="prayer-time-input">
+                <label for="asar_end">Asar End Time:</label>
+                <input type="time" id="asar_end" name="asar_end">
+            </div>
+            <div class="prayer-time-input">
+                <label for="maghrib_start">Maghrib Start Time:</label>
+                <input type="time" id="maghrib_start" name="maghrib_start">
+            </div>
+            <div class="prayer-time-input">
+                <label for="maghrib_end">Maghrib End Time:</label>
+                <input type="time" id="maghrib_end" name="maghrib_end">
+            </div>
+            <div class="prayer-time-input">
+                <label for="esha_start">Esha Start Time:</label>
+                <input type="time" id="esha_start" name="esha_start">
+            </div>
+            <div class="prayer-time-input">
+                <label for="esha_end">Esha End Time:</label>
+                <input type="time" id="esha_end" name="esha_end">
+            </div>
+            <button type="submit" class="button">Save Prayer Times</button>
+        </form>
+
+        <h2>Current Prayer Time</h2>
+        <div id="currentPrayerTime"></div>
+
+        <h2>Stored Prayer Times</h2>
+        <table id="prayerTimesTable" border="1" style="width:100%; margin-bottom:20px;">
+            <thead>
+                <tr>
+                    <th>Prayer</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Prayer times will be inserted here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Pre-fill form with current prayer times and load table
+        window.onload = function () {
+            fetch('/get-prayer-times')
+                .then(response => response.json())
+                .then(data => {
+                    ['fajr', 'zohar', 'asar', 'maghrib', 'esha'].forEach(prayer => {
+                        if (data[prayer + '_start']) {
+                            document.getElementById(prayer + '_start').value = data[prayer + '_start'];
+                        }
+                        if (data[prayer + '_end']) {
+                            document.getElementById(prayer + '_end').value = data[prayer + '_end'];
+                        }
+                    });
+                    loadPrayerTimesTable();
+                });
+        };
+
+        // Handle form submission to update prayer times
+        document.getElementById('prayerTimeForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const data = new FormData(this);
+
+            fetch('/update-prayer-times', {
+                method: 'POST',
+                body: data,
+            })
+                .then(response => response.json())
+                .then(data => {
+                    alert('Prayer times updated successfully!');
+                    loadPrayerTimesTable();
+                    fetchCurrentPrayerTime();
+                })
+                .catch(error => {
+                    alert('Error updating prayer times.');
+                });
+        });
+
+        // Fetch the current prayer time
+        function fetchCurrentPrayerTime() {
+            fetch('/current-prayer-time')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.prayer && data.prayer !== "No prayer time at the moment") {
+                        document.getElementById('currentPrayerTime').textContent =
+                            `It's time for: ${data.prayer} (${data.start} - ${data.end})`;
+                    } else {
+                        document.getElementById('currentPrayerTime').textContent = "No prayer time at the moment";
+                    }
+                });
+        }
+
+        // Display stored prayer times in table and highlight current prayer
+        function loadPrayerTimesTable() {
+            Promise.all([fetch('/get-prayer-times').then(res => res.json()), fetch('/current-prayer-time').then(res => res.json())])
+                .then(([data, current]) => {
+                    const prayers = ['fajr', 'zohar', 'asar', 'maghrib', 'esha'];
+                    const tableBody = document.querySelector('#prayerTimesTable tbody');
+                    tableBody.innerHTML = '';
+                    prayers.forEach(prayer => {
+                        const start = data[prayer + '_start'] || '';
+                        const end = data[prayer + '_end'] || '';
+                        const isCurrent = current.prayer && current.prayer.toLowerCase() === prayer;
+                        const row = document.createElement('tr');
+                        if (isCurrent) row.classList.add('highlight');
+                        row.innerHTML = `
+                            <td>${prayer.charAt(0).toUpperCase() + prayer.slice(1)}</td>
+                            <td>${start}</td>
+                            <td>${end}</td>
+                            <td>
+                                <button onclick="editPrayerTime('${prayer}', '${start}', '${end}')">Edit</button>
+                                <button onclick="deletePrayerTime('${prayer}')">Delete</button>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                });
+        }
+
+        // Edit prayer time: pre-fill form
+        function editPrayerTime(prayer, start, end) {
+            document.getElementById(prayer + '_start').value = start;
+            document.getElementById(prayer + '_end').value = end;
+            window.scrollTo(0, 0);
+        }
+
+        // Delete prayer time
+        function deletePrayerTime(prayer) {
+            fetch('/delete-prayer-time', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prayer: prayer })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    loadPrayerTimesTable();
+                    fetchCurrentPrayerTime();
+                });
+        }
+
+        // Fetch current prayer time every minute
+        setInterval(fetchCurrentPrayerTime, 60000); // Every minute
+        fetchCurrentPrayerTime();  // Initial call to fetch prayer time
+    </script>
+</body>
+
+</html>
